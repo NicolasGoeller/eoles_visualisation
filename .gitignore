@@ -1,0 +1,94 @@
+## Exclude folders for created data
+
+/inputs
+/outputs
+/_HISTORIC
+*.zip
+/graphs
+
+
+Skip to content
+Pull requests
+Issues
+Marketplace
+Explore
+@NicolasGoeller
+github /
+gitignore
+Public
+
+Code
+Pull requests 271
+Actions
+Security
+
+    Insights
+
+gitignore/R.gitignore
+@bdougie
+bdougie Merge pull request #3792 from jl5000/patch-1
+Latest commit cfdda2a on 11 Dec 2021
+History
+21 contributors
+@Ironholds
+@jimhester
+@katrinleinweber
+@zy26
+@tjgrilley
+@raybuhr
+@pat-s
+@MichaelChirico
+@jrnold
+@jl5000
+@jangorecki
+@izuzak
+49 lines (35 sloc) 671 Bytes
+# History files
+.Rhistory
+.Rapp.history
+
+# Session Data files
+.RData
+.RDataTmp
+
+# User-specific files
+.Ruserdata
+
+# Example code in package build process
+*-Ex.R
+
+# Output files from R CMD build
+/*.tar.gz
+
+# Output files from R CMD check
+/*.Rcheck/
+
+# RStudio files
+.Rproj.user/
+
+# produced vignettes
+vignettes/*.html
+vignettes/*.pdf
+
+# OAuth2 token, see https://github.com/hadley/httr/releases/tag/v0.3
+.httr-oauth
+
+# knitr and R markdown default cache directories
+*_cache/
+/cache/
+
+# Temporary files created by R markdown
+*.utf8.md
+*.knit.md
+
+# R Environment Variables
+.Renviron
+
+# pkgdown site
+docs/
+
+# translation temp files
+po/*~
+
+# RStudio Connect folder
+rsconnect/
