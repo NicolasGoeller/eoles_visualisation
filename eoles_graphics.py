@@ -9,11 +9,6 @@ import plotly.graph_objs as go
 import plotly.figure_factory as ff
 from itertools import zip_longest
 
-#### To-DO
-# - Create Price-Production plot - is kind of implemented with stacked barplot and line
-# - Multi: Compound section for transformation into GWh into load function
-# - Implement color into vardesc_df and function settings
-
 ### Helpers for variable manipulation and visualisation
 
 def _category_names(df_names):
@@ -259,7 +254,6 @@ def _Seaborn_DisplaySave(fig, folder, name, show= False, save=True):
         
     ## If indicated, show plot, if not return nothing
     if show:
-        print("eval")
         plt.show()
         return()
     else:
@@ -305,7 +299,7 @@ def load_baseEoles(year, base_path=""):
     idx[0].fillna("index", inplace=True)
 
     ## Create Multindex from level 0 and level 1 names and assign to tables
-    idx_multi = pd.MultiIndex.from_frame(idx, names=["category", "technology"])
+    idx_multi = pd.MultiIndex.from_frame(idx, names=["categories","variables"])
     data.columns = idx_multi
     
     ## Create variable description table of english names, french names and variable units
@@ -370,7 +364,7 @@ def load_multicountryEoles(base_path=""):
     categories = ["index"]*2+["generation"]*len(generation)+["consumption"]*len(consumption)
     
     ## Generate full Multiindex
-    idx_multi = pd.MultiIndex.from_tuples(list(zip(categories, variables)))
+    idx_multi = pd.MultiIndex.from_tuples(list(zip(categories, variables)), names=["categories","variables"])
     
     ## Assign Multiindex
     production.columns = idx_multi
@@ -430,7 +424,7 @@ def load_multicountryHistoric(path=""):
     categories = ["index"]*2+["generation"]*len(generation)+["consumption"]*len(consumption)
     
     ## Generate full Multiindex
-    idx_multi = pd.MultiIndex.from_tuples(list(zip(categories, variables)))
+    idx_multi = pd.MultiIndex.from_tuples(list(zip(categories, variables)), names=["categories","variables"])
     
     ## Assign Multiindex
     production.columns = idx_multi
@@ -785,8 +779,11 @@ def cdf_plot(data, variables, output, folder="graphs", figsize= (16,9),
                       "x_axis":"",
                       "y_axis":"",
                       "legend_title":"",
-                      "cat_labels":"",
+                      "cat_labels": variables,
                       "file_name":"cdf_plot"}
+    ## Set default legend labels
+    if isinstance(data.columns, pd.MultiIndex):
+        default_labels["cat_labels"] = list(map(lambda x: x[1], variables))
     
     ## Process label indications
     for label in default_labels.keys():
@@ -818,12 +815,6 @@ def cdf_plot(data, variables, output, folder="graphs", figsize= (16,9),
         variables = list(map(lambda x: x[1], variables))
     ## Pivot data into appropriate shape    
     data = data.melt(value_vars= variables, var_name='source', value_name='value')
-            
-    ## Set cat_labels to variable names if not indicated
-    if (plot_labels["cat_labels"] == "") & isinstance(data.columns, pd.MultiIndex):
-        plot_labels["cat_labels"] = list(map(lambda x: x[1], variables))
-    elif plot_labels["cat_labels"] == "":
-        plot_labels["cat_labels"] = variables
     
     ## If any of selection filled, generate a subtitle
     if bool(typ_day) | bool(typ_week) | any(pd.notna(time_subset)):
@@ -911,8 +902,11 @@ def price_duration_curve(data, prices, output, folder="graphs", figsize= (16,9),
                       "x_axis":"",
                       "y_axis":"",
                       "legend_title":"",
-                      "cat_labels":"",
+                      "cat_labels": prices,
                       "file_name":"price_duration_curve"}
+    ## Set default legend labels
+    if isinstance(data.columns, pd.MultiIndex):
+        default_labels["cat_labels"] = list(map(lambda x: x[1], prices))
     
     ## Process label indications
     for label in default_labels.keys():
@@ -936,12 +930,6 @@ def price_duration_curve(data, prices, output, folder="graphs", figsize= (16,9),
     data = subset_timeperiod(data, timevar = timevar, time_subset=time_subset)
     data = typical_day(data, timevar = timevar, time_selection=typ_day)
     data = typical_week(data, timevar = timevar, time_selection=typ_week)
-    
-    ## Set cat_labels to variable names if not indicated
-    if (plot_labels["cat_labels"] == "") & isinstance(data.columns, pd.MultiIndex):
-        plot_labels["cat_labels"] = list(map(lambda x: x[1], prices))
-    elif plot_labels["cat_labels"] == "":
-        plot_labels["cat_labels"] = prices
     
     ## If any of selection filled, generate a subtitle
     if bool(typ_day) | bool(typ_week) | any(pd.notna(time_subset)):
@@ -1081,12 +1069,6 @@ def stacked_areachart(data, variables, output, timevar=None, add_line=None,
     data = typical_day(data, timevar = timevar, time_selection=typ_day)
     data = typical_week(data, timevar = timevar, time_selection=typ_week)
     
-    ## Set cat_labels to variable names if not indicated
-    if (plot_labels["cat_labels"] == "") & isinstance(data.columns, pd.MultiIndex):
-        plot_labels["cat_labels"] = list(map(lambda x: x[1], variables))
-    elif plot_labels["cat_labels"] == "":
-        plot_labels["cat_labels"] = variables
-    
     ## If any of selection filled, generate a subtitle
     if bool(typ_day) | bool(typ_week) | any(pd.notna(time_subset)):
         subtitle = _gen_subtitle(time_subset=time_subset, typ_day=typ_day,
@@ -1192,8 +1174,11 @@ def stacked_barplot(data, x, variables, output, display= "relative", folder="gra
                       "x_axis":"",
                       "y_axis":"",
                       "legend_title":"",
-                      "cat_labels":"",
+                      "cat_labels": variables,
                       "file_name":"stacked_barplot"}
+    ## Set default legend labels
+    if isinstance(data.columns, pd.MultiIndex):
+        default_labels["cat_labels"] = list(map(lambda x: x[1], variables))
     
     ## Process label indications
     for label in default_labels.keys():
@@ -1232,7 +1217,6 @@ def stacked_barplot(data, x, variables, output, display= "relative", folder="gra
         data = data.assign(share = lambda x: (x["sum"]/x["sum_total"])*100)
         data = data.iloc[:,[0,1,4]]
         data.columns = ["category","grouping","weight"]
-        #data.rename(columns={"share": "weight"}, inplace=True)
 
     elif display == "absolute": # Absolute
         data.columns = ["category","grouping","weight"]
@@ -1328,8 +1312,11 @@ def energy_piechart(data, variables, output, folder="graphs", figsize= (16,9),
     ## Set default labels
     default_labels = {"title":"",
                       "legend_title":"",
-                      "cat_labels":"",
+                      "cat_labels": variables,
                       "file_name":"energy_piechart"}
+    ## Set default legend labels
+    if isinstance(data.columns, pd.MultiIndex):
+        default_labels["cat_labels"] = list(map(lambda x: x[1], variables))
     
     ## Process label indications
     for label in default_labels.keys():
@@ -1361,10 +1348,6 @@ def energy_piechart(data, variables, output, folder="graphs", figsize= (16,9),
     data.columns = data.columns.droplevel()
     data = data.T
     data.reset_index(inplace=True, drop=False)
-    
-    ## Set cat_labels to variable names if not indicated
-    if plot_labels["cat_labels"] == "":
-        plot_labels["cat_labels"] = data["technology"]
     
     ## Generate text for title and axes
     data["cat_labels"] = plot_labels["cat_labels"]
@@ -1450,8 +1433,11 @@ def energy_line(data, variables, output, timevar=None, folder="graphs",
                       "x_axis":"",
                       "y_axis":"",
                       "legend_title":"",
-                      "cat_labels":"",
+                      "cat_labels": variables,
                       "file_name":"lineplot"}
+    ## Set default legend labels
+    if isinstance(data.columns, pd.MultiIndex):
+        default_labels["cat_labels"] = list(map(lambda x: x[1], variables))
     
     ## Process label indications
     for label in default_labels.keys():
@@ -1479,12 +1465,6 @@ def energy_line(data, variables, output, timevar=None, folder="graphs",
     data = subset_timeperiod(data, timevar = timevar, time_subset=time_subset)
     data = typical_day(data, timevar = timevar, time_selection=typ_day)
     data = typical_week(data, timevar = timevar, time_selection=typ_week)
-
-    ## Set cat_labels to variable names if not indicated
-    if (plot_labels["cat_labels"] == "") & isinstance(data.columns, pd.MultiIndex):
-        plot_labels["cat_labels"] = list(map(lambda x: x[1], variables))
-    elif plot_labels["cat_labels"] == "":
-        plot_labels["cat_labels"] = variables
 
     ## If any of selection filled, generate a subtitle
     if bool(typ_day) | bool(typ_week) | any(pd.notna(time_subset)):
@@ -1747,6 +1727,19 @@ def reg_energydata(data, dep, indep, squared=[], logged=[], constant=True,
 ### Eoles Base model visualisation object
 
 class Eoles_baseline:
+    """Eoles baseline model visualisation framework
+    
+    Allows setting up necessary data and settings for making visuals on the Eoles 
+    baseline model. 
+    
+    Args:
+        year (string): Baseline year when the time data in output starts.
+        base_path (str, optional): Base path where model output is located. 
+        Defaults to "".
+        historic_path (str, optional): Folder path where historic data files are
+        located. Defaults to "".
+        
+    """
     
     def __init__(self, year, base_path="", historic_path=""):
         
@@ -1755,6 +1748,15 @@ class Eoles_baseline:
         self.historic = load_baseHistoric(path= historic_path) 
 
     def attach_historic(self, historic_path=""):
+        """Attach historic data to main datatable
+        
+        Concats the table of historic data on the model output data table. Creates
+        a new column index with presuffixes "act_" and "sim_" to distinguish categories
+
+        Args:
+            historic_path (str, optional): Folder path where historic data files
+            are located. Defaults to "".
+        """
         
         ## If historic is not loaded and no path given return message
         if all([self.historic.empty, not(historic_path)]):
@@ -1807,6 +1809,34 @@ class Eoles_baseline:
         self.data = merge_data.copy() 
                  
     def detach_historic(self):
+        """Detach historic data columns from main data table
+        
+        Detaches the historic columns from the main data table. Recreates previous
+        basic column index without presuffixes.
+        
+        """
+    
+        ## Get vardesc of simulated variables
+        cols = self.data.columns.levels[0][np.invert(
+            self.data.columns.levels[0].isin(["index","analysis"]))]
+        cols = cols[cols.str.startswith("sim")].to_list()
+        
+        ## Manipulate sim data vardesc 
+        simdesc_df = self.vardesc_df.loc[cols,:]
+        simdesc_df.reset_index(drop=False, inplace=True)
+        simdesc_df = simdesc_df.assign(categories = lambda x: x.categories.str.replace("sim_",""),
+                                       desc_en = lambda x: x.desc_en.str.replace("simulated ",""))
+        simdesc_df.set_index(["categories","variables"],drop=True, inplace=True)
+        
+        ## Concat vardesc dfs together
+        if "analysis" in self.data.columns.levels[0]:
+            restdesc_df = self.vardesc_df.loc[["index","analysis"],:]
+            vardesc_df = pd.concat([restdesc_df, simdesc_df], axis=0)
+        else:
+            restdesc_df = self.vardesc_df.loc[["index"],:]
+            vardesc_df = pd.concat([restdesc_df, simdesc_df], axis=0)
+            
+        self.vardesc_df = vardesc_df.copy()
         
         ## Get columns of simulated variables
         cols = self.data.columns.levels[0][
@@ -1816,31 +1846,54 @@ class Eoles_baseline:
             cols = ["index"]+cols+["analysis"]
         else:
             cols = ["index"]+cols
-        
+
         ## Subset data in object
         data = self.data[cols]
         data.columns = data.columns.remove_unused_levels()
+
         ## Remove sim presuffix
         data = _manipulate_multicol(data, action="remove")
         ## Reassign data to object
         self.data = data.copy()
-        
-        ## Get vardesc of simulated variables
-        vardesc = self.vardesc_df.copy()
               
     def update_vardesc(self, changes=pd.DataFrame()):
-            
+        """Update variable description table
+        
+        Allows to insert a table of variable names (english or french) and
+        variable units into the existing description table.
+
+        Args:
+            changes (pd.DataFrame, optional): Table of changes to be made to the
+            variable description table. Can contain any of the variables as row
+            index and any of desc_en, desc_fr, units. Defaults to pd.DataFrame().
+        """
+        
+        ## Join table of changes with vardesc table
         vardesc_new = self.vardesc_df.join(changes, how="left", rsuffix= "_new")
-            
+
+        ## For each column in changes table   
         for var in changes.columns.to_list():
-            
+            ## Fill missings in vardesc table with changes table
             vardesc_new[var].fillna(vardesc_new.loc[:,var+"_new"],
                                         inplace=True)
+            ## Remove changes column
             vardesc_new.pop(var+"_new")
-        
+        ## Save new vardesc table
         self.vardesc_df = vardesc_new.copy()  
 
     def compute_analysisvar(self, variables):
+        """Compute variables of analysis
+        
+        Allows to compute a variety of analysis variables from the data of the model object.
+
+        Args:
+            variables (list): List of strings of variables to be computed. Options are:
+                - res_demand: residual electricty demand after subtraction of 
+                  renewable energy production (wind, solar, river).
+                - diffres_demand: residual electricty demand lagged by one time unit (hour).
+                - price_error: error (difference) between simulated and actual electricity price.
+                - absprice_error: absolute price error.
+        """
         
         ## Attach historic file
         self.attach_historic()
@@ -1852,6 +1905,7 @@ class Eoles_baseline:
         
         data = self.data.copy()
         
+        ## Execute computations for each variable wanted
         for var in variables:
             if var == "res_demand":
                 data[("analysis","res_demand")] = _res_demand(
@@ -1871,12 +1925,11 @@ class Eoles_baseline:
                 data[("analysis","absprice_error")] = abs(_price_error(
                     sim_price=data[("sim_cost", "electricity_demand")],
                     act_price=data[("sim_cost", "electricity_demand")]))
-                
+        
+        ## Save new data frame      
         self.data = data.copy()
         
-        ## Detach historic file
-        self.detach_historic()
-        
+        ## Generate description table for analysis variables
         ana_vars = list(zip(["analysis"]*len(valid_entries), valid_entries))
         desc_en = ["electricity demand residual after renewable generation",
                    "lagged electricity demand residual after renewable generation",
@@ -1888,13 +1941,42 @@ class Eoles_baseline:
                                     "desc_fr": desc_fr,
                                     "units": units}, 
                                    index=ana_vars)
+        ## Generate multindex of wanted analysis variables
         ana_vars_wanted = list(zip(["analysis"]*len(variables), variables))
+        ## Subset description table for wanted variables
         ana_vardesc = ana_vardesc.loc[ana_vars_wanted,:]
+        ## Concat to existing description table
         self.vardesc_df = pd.concat([self.vardesc_df, ana_vardesc], axis=0)
         
+        ## Detach historic file
+        self.detach_historic()
+               
     def density_plot(self, variables, output, folder="graphs", figsize= (16,9),
                      show=False, save=True, time_subset=[None, None], 
                      typ_day=dict(), typ_week=dict(), label_lang="desc_en"):
+        """Density plot of continuous variables
+    
+        Produces a density plot for one or more continuous variables.
+
+        Args:
+            variables (list): List of string variables names to visualize.
+            output (string): Intended output format. "png" for seaborn graph, "html" 
+            for interactive plotly.
+            folder (str, optional): Folder where to save the graph results. Defaults
+            to "graphs".
+            figsize (tuple, optional): Proportions of figure size. Result is different
+            for png and html. Defaults to (16,9).
+            show (bool, optional): Indicator if figure should be shown. Defaults to False.
+            save (bool, optional): Indicator if figure should be saved. Defaults to True.
+            time_subset (list, optional): Time interval to subset. Defaults to [None, None]
+            for full data.
+            typ_day (dict, optional): Indicates selection for the calculation of a
+            typical day. Defaults to dict(), implying no selection.
+            typ_week (dict, optional):  Indicates selection for the calculation of a
+            typical week. Defaults to dict(), implying no selection.
+            label_lang (str, optional): Language of plot labels. Defaults to "desc_en",
+            implying english.
+        """
         
         ## Transform input "variables" into list if not one
         if not(isinstance(variables, list)):
@@ -1949,6 +2031,29 @@ class Eoles_baseline:
     def cdf_plot(self, variables, output, folder="graphs", figsize= (16,9),
                  show=False, save=True, time_subset=[None, None], 
                  typ_day=dict(), typ_week=dict(), label_lang="desc_en"):
+        """Cumulative distribution plot of continuous variables
+    
+        Produces a cumulative distribution plot for one or more continuous variables.
+
+        Args:
+            variables (list): List of string variables names to visualize.
+            output (string): Intended output format. "png" for seaborn graph, "html" 
+            for interactive plotly.
+            folder (str, optional): Folder where to save the graph results. Defaults
+            to "graphs".
+            figsize (tuple, optional): Proportions of figure size. Result is different
+            for png and html. Defaults to (16,9).
+            show (bool, optional): Indicator if figure should be shown. Defaults to False.
+            save (bool, optional): Indicator if figure should be saved. Defaults to True.
+            time_subset (list, optional): Time interval to subset. Defaults to [None, None]
+            for full data.
+            typ_day (dict, optional): Indicates selection for the calculation of a
+            typical day. Defaults to dict(), implying no selection.
+            typ_week (dict, optional):  Indicates selection for the calculation of a
+            typical week. Defaults to dict(), implying no selection.
+            label_lang (str, optional): Language of plot labels. Defaults to "desc_en",
+            implying english.
+        """
         
         ## Transform input "variables" into list if not one
         if not(isinstance(variables, list)):
@@ -2003,6 +2108,29 @@ class Eoles_baseline:
     def price_duration_curve(self, prices, output, folder="graphs", figsize= (16,9),
                              show=False, save=True, time_subset=[None, None], 
                              typ_day=dict(), typ_week=dict(), label_lang="desc_en"):
+        """Price duration curve plot of price variables
+    
+        Produces a price duration curve for one or more price variables.
+
+        Args:
+            prices (list): List of string variables names to visualize.
+            output (string): Intended output format. "png" for seaborn graph, "html" 
+            for interactive plotly.
+            folder (str, optional): Folder where to save the graph results. Defaults
+            to "graphs".
+            figsize (tuple, optional): Proportions of figure size. Result is different
+            for png and html. Defaults to (16,9).
+            show (bool, optional): Indicator if figure should be shown. Defaults to False.
+            save (bool, optional): Indicator if figure should be saved. Defaults to True.
+            time_subset (list, optional): Time interval to subset. Defaults to [None, None]
+            for full data.
+            typ_day (dict, optional): Indicates selection for the calculation of a
+            typical day. Defaults to dict(), implying no selection.
+            typ_week (dict, optional):  Indicates selection for the calculation of a
+            typical week. Defaults to dict(), implying no selection.
+            label_lang (str, optional): Language of plot labels. Defaults to "desc_en",
+            implying english.
+        """
         
         ## Transform input "variables" into list if not one
         if not(isinstance(prices, list)):
@@ -2058,6 +2186,33 @@ class Eoles_baseline:
                           folder="graphs", figsize= (16,9), show=False, save=True,
                           time_subset=[None, None], typ_day=dict(), typ_week=dict(),
                           label_lang="desc_en"):
+        """Stacked area chart of continuous variables
+    
+        Produces a stacked area chart for one or more continuous variables.
+
+        Args:
+            variables (list): List of string variables names to visualize.
+            output (string): Intended output format. "png" for seaborn graph, "html" 
+            for interactive plotly.
+            negative (list, optional): List of string variable names to display on a 
+            negative axis. Defaults to [].
+            add_line (string, optional): String variable name of variable to be added
+            as a line plot. Defaults to None.       
+            folder (str, optional): Folder where to save the graph results. Defaults
+            to "graphs".
+            figsize (tuple, optional): Proportions of figure size. Result is different
+            for png and html. Defaults to (16,9).
+            show (bool, optional): Indicator if figure should be shown. Defaults to False.
+            save (bool, optional): Indicator if figure should be saved. Defaults to True.
+            time_subset (list, optional): Time interval to subset. Defaults to [None, None]
+            for full data.
+            typ_day (dict, optional): Indicates selection for the calculation of a
+            typical day. Defaults to dict(), implying no selection.
+            typ_week (dict, optional):  Indicates selection for the calculation of a
+            typical week. Defaults to dict(), implying no selection.
+            label_lang (str, optional): Language of plot labels. Defaults to "desc_en",
+            implying english.
+        """
 
         ## Transform input "variables" into list if not one
         if not(isinstance(variables, list)):
@@ -2073,7 +2228,9 @@ class Eoles_baseline:
             data = self.data[variables+[("index","hour")]]
 
         ## Apply negative transformation if intended
+
         if negative != []:
+            negative = _index_flatselect(negative, self.data)
             data[negative] = data[negative]*(-1)
         
         ## Generate text for title and axes
@@ -2124,6 +2281,30 @@ class Eoles_baseline:
     def bivar_scatter(self, x, y, output, folder="graphs", figsize= (16,9),
                       show=False, save=True, time_subset=[None, None],
                       typ_day=dict(), typ_week=dict(), label_lang="desc_en"):
+        """Bivariate scatter plot of continuous variables
+
+        Produces a bivariate scatter plot for one or more continuous variables.
+
+        Args:
+            x (string): Name of variable to graph on x-axis.
+            y (string): Name of variable to graph on y-axis.
+            output (string): Intended output format. "png" for seaborn graph, "html" 
+            for interactive plotly.      
+            folder (str, optional): Folder where to save the graph results. Defaults
+            to "graphs".
+            figsize (tuple, optional): Proportions of figure size. Result is different
+            for png and html. Defaults to (16,9).
+            show (bool, optional): Indicator if figure should be shown. Defaults to False.
+            save (bool, optional): Indicator if figure should be saved. Defaults to True.
+            time_subset (list, optional): Time interval to subset. Defaults to [None, None]
+            for full data.
+            typ_day (dict, optional): Indicates selection for the calculation of a
+            typical day. Defaults to dict(), implying no selection.
+            typ_week (dict, optional):  Indicates selection for the calculation of a
+            typical week. Defaults to dict(), implying no selection.
+            label_lang (str, optional): Language of plot labels. Defaults to "desc_en",
+            implying english.
+        """
         
         ## Get plotting data
         data = self.data[[x,y]+[("index","hour")]]
@@ -2149,6 +2330,30 @@ class Eoles_baseline:
     def energy_line(self, variables, output, folder="graphs", figsize= (16,9),
                     show=False, save=True, time_subset=[None, None], typ_day=dict(),
                     typ_week=dict(), label_lang="desc_en"):
+        """Line plot of continuous variables
+    
+        Produces a line plot for one or more continuous variables over a time dimension.
+
+
+        Args:
+            variables (list): List of string variables names to visualize.
+            output (string): Intended output format. "png" for seaborn graph, "html" 
+            for interactive plotly.
+            folder (str, optional): Folder where to save the graph results. Defaults
+            to "graphs".
+            figsize (tuple, optional): Proportions of figure size. Result is different
+            for png and html. Defaults to (16,9).
+            show (bool, optional): Indicator if figure should be shown. Defaults to False.
+            save (bool, optional): Indicator if figure should be saved. Defaults to True.
+            time_subset (list, optional): Time interval to subset. Defaults to [None, None]
+            for full data.
+            typ_day (dict, optional): Indicates selection for the calculation of a
+            typical day. Defaults to dict(), implying no selection.
+            typ_week (dict, optional):  Indicates selection for the calculation of a
+            typical week. Defaults to dict(), implying no selection.
+            label_lang (str, optional): Language of plot labels. Defaults to "desc_en",
+            implying english.
+        """
         
         ## Transform input "variables" into list if not one
         if not(isinstance(variables, list)):
@@ -2204,6 +2409,29 @@ class Eoles_baseline:
     def energy_piechart(self, variables, output, folder="graphs", figsize= (16,9),
                         show=False,save=True, time_subset=[None, None], typ_day=dict(),
                         typ_week=dict(), label_lang="desc_en"):
+        """Pie chart over several variables
+    
+        Produces a pie chart of several variables in proportion to the table total.
+
+        Args:
+            variables (list): List of string variables names to visualize.
+            output (string): Intended output format. "png" for seaborn graph, "html" 
+            for interactive plotly.
+            folder (str, optional): Folder where to save the graph results. Defaults
+            to "graphs".
+            figsize (tuple, optional): Proportions of figure size. Result is different
+            for png and html. Defaults to (16,9).
+            show (bool, optional): Indicator if figure should be shown. Defaults to False.
+            save (bool, optional): Indicator if figure should be saved. Defaults to True.
+            time_subset (list, optional): Time interval to subset. Defaults to [None, None]
+            for full data.
+            typ_day (dict, optional): Indicates selection for the calculation of a
+            typical day. Defaults to dict(), implying no selection.
+            typ_week (dict, optional):  Indicates selection for the calculation of a
+            typical week. Defaults to dict(), implying no selection.
+            label_lang (str, optional): Language of plot labels. Defaults to "desc_en",
+            implying english.
+        """
         
         ## Transform input "variables" into list if not one
         if not(isinstance(variables, list)):
@@ -2242,7 +2470,28 @@ class Eoles_baseline:
     
     def reg_energydata(self, dep, indep, squared=[], logged=[], constant=True,
                        include_aov=True, time_subset=[None, None],
-                       typ_day=dict(), typ_week=dict()):#, label_lang="desc_en"):
+                       typ_day=dict(), typ_week=dict()):
+        """Multivariate regression
+
+        Produce a multivariate regression output with options for functional form transformations and
+        AOV display.
+
+        Args:
+            dep (string): Variable name of dependent variable.
+            indep (list): List of variable names of independent variables.
+            squared (list, optional): List of variable names to  square transform. Defaults to [].
+            logged (list, optional): List of variable names to log transform. Defaults to [].
+            constant (bool, optional): Indicator on whether to include a constant in regression output.
+            Defaults to True.
+            include_aov (bool, optional): Indicator on whether to include an analysis of variance section 
+            in regression output. Defaults to True.
+            time_subset (list, optional): Time interval to subset. Defaults to [None, None]
+            for full data.
+            typ_day (dict, optional): Indicates selection for the calculation of a
+            typical day. Defaults to dict(), implying no selection.
+            typ_week (dict, optional):  Indicates selection for the calculation of a
+            typical week. Defaults to dict(), implying no selection.
+        """
         
         ## Transform input "variables" into list if not one
         if not(isinstance(indep, list)):
@@ -2264,6 +2513,31 @@ class Eoles_baseline:
     def energy_balancechart(self, display, output, folder="graphs", figsize= (16,9),
                             show=False, save=True, time_subset=[None, None],
                             typ_day=dict(), typ_week=dict(), label_lang= "desc_en"):
+        """Generation-Consumption energy balance plot
+    
+        Produces a stacked barplot from generation and consumption categories.
+
+        Args:
+            display (string): Indicator if relative or abolute number should be used.
+            output (string): Intended output format. "png" for seaborn graph, "html" 
+            for interactive plotly.
+            display (str, optional): Indicator for whether plot should display absolute 
+            or relative proprortions. Defaults to "relative".        
+            folder (str, optional): Folder where to save the graph results. Defaults
+            to "graphs".
+            figsize (tuple, optional): Proportions of figure size. Result is different
+            for png and html. Defaults to (16,9).
+            show (bool, optional): Indicator if figure should be shown. Defaults to False.
+            save (bool, optional): Indicator if figure should be saved. Defaults to True.
+            time_subset (list, optional): Time interval to subset. Defaults to [None, None]
+            for full data.
+            typ_day (dict, optional): Indicates selection for the calculation of a
+            typical day. Defaults to dict(), implying no selection.
+            typ_week (dict, optional):  Indicates selection for the calculation of a
+            typical week. Defaults to dict(), implying no selection.
+            label_lang (str, optional): Language of plot labels. Defaults to "desc_en",
+            implying english.
+        """
 
         ## Flatten column index over multiindex
         variables = _index_flatselect(["generation","consumption"], self.data)
@@ -2300,6 +2574,17 @@ class Eoles_baseline:
 ### Eoles Multicountry model visualisation object
 
 class Eoles_multicountry:
+    """Eoles multicountry model visualisation framework
+    
+    Allows setting up necessary data and settings for making visuals on the Eoles 
+    multicountry model. 
+    
+    Args:
+        base_path (str, optional): Base path where model output is located. 
+        Defaults to "".
+        historic_path (str, optional): Folder path where historic data files are
+        located. Defaults to "". 
+    """
     
     def __init__(self, base_path, historic_path=""):
         
@@ -2308,6 +2593,15 @@ class Eoles_multicountry:
         self.historic = load_multicountryHistoric(path= historic_path)
         
     def attach_historic(self, historic_path=""):
+        """Attach historic data to main datatable
+        
+        Concats the table of historic data on the model output data table. Creates
+        a new column index with presuffixes "act_" and "sim_" to distinguish categories
+
+        Args:
+            historic_path (str, optional): Folder path where historic data files
+            are located. Defaults to "".
+        """
         
         ## If historic is not loaded and no path given return message
         if all([self.historic.empty, not(historic_path)]):
@@ -2361,6 +2655,12 @@ class Eoles_multicountry:
         self.data = merge_data.copy()
                  
     def detach_historic(self):
+        """Detach historic data columns from main data table
+        
+        Detaches the historic columns from the main data table. Recreates previous
+        basic column index without presuffixes.
+        
+        """
         
         ## Get vardesc of simulated variables
         cols = self.data.columns.levels[0][np.invert(
@@ -2403,19 +2703,45 @@ class Eoles_multicountry:
         self.data = data.copy()
 
     def update_vardesc(self, changes=pd.DataFrame()):
+        """Update variable description table
         
+        Allows to insert a table of variable names (english or french) and
+        variable units into the existing description table.
+
+        Args:
+            changes (pd.DataFrame, optional): Table of changes to be made to the
+            variable description table. Can contain any of the variables as row
+            index and any of desc_en, desc_fr, units. Defaults to pd.DataFrame().
+        """
+        
+        ## Join table of changes with vardesc table
         vardesc_new = self.vardesc_df.join(changes, how="left", 
                                            rsuffix= "_new")
-            
+        
+        ## For each column in changes table    
         for var in changes.columns.to_list():
-            
+            ## Fill missings in vardesc table with changes table
             vardesc_new[var].fillna(vardesc_new.loc[:,var+"_new"],
                                         inplace=True)
+            ## Remove changes column
             vardesc_new.pop(var+"_new")
-        
+        ## Save new vardesc table
         self.vardesc_df = vardesc_new.copy()
                 
     def compute_analysisvar(self, variables):
+        """Compute variables of analysis
+        
+        Allows to compute a variety of analysis variables from the data of the model object.
+
+        Args:
+            variables (list): List of strings of variables to be computed. Options are:
+                - res_demand: residual electricty demand after subtraction of 
+                  renewable energy production (wind, solar, river).
+                - diffres_demand: residual electricty demand lagged by one time unit (hour).
+                - price_error: error (difference) between simulated and actual electricity price.
+                - absprice_error: absolute price error.
+                - net_IM: Net electricity imports.
+        """
         
         ## Attach historic file
         self.attach_historic()
@@ -2428,6 +2754,7 @@ class Eoles_multicountry:
         
         data = self.data.copy()
         
+        ## Execute computations for each variable wanted
         for var in variables:
             if var == "res_demand":
                 data[("analysis","res_demand")] = _res_demand(
@@ -2452,15 +2779,12 @@ class Eoles_multicountry:
                     sim_price=data[("sim_cost", "elec_balance_dual_values")],
                     act_price=data[("act_cost", "elec_balance_dual_values")]))
             elif var == "net_IM":
-                data[("analysis","net_IM")] = np.sum(data[("act_generation","net_imports"), 
-                                                          ("act_consumption","net_exports")],
-                                                     axis= 0)
-                
+                data[("analysis","net_IM")] = data[[("act_generation","net_imports"), 
+                                                    ("act_consumption","net_exports")]].sum(axis=1)
+                                                     
         self.data = data.copy()
-        
-        ## Detach historic file
-        self.detach_historic()
-        
+
+        ## Generate description table for analysis variables
         ana_vars = list(zip(["analysis"]*len(valid_entries), valid_entries))
         desc_en = ["electricity demand residual after renewable generation",
                    "lagged electricity demand residual after renewable generation",
@@ -2473,13 +2797,43 @@ class Eoles_multicountry:
                                     "desc_fr": desc_fr,
                                     "units": units}, 
                                    index=ana_vars)
+        ## Generate multindex of wanted analysis variables
         ana_vars_wanted = list(zip(["analysis"]*len(variables), variables))
+        ## Subset description table for wanted variables
         ana_vardesc = ana_vardesc.loc[ana_vars_wanted,:]
+        ## Concat to existing description table
         self.vardesc_df = pd.concat([self.vardesc_df, ana_vardesc], axis=0)
-     
+        
+        ## Detach historic file
+        self.detach_historic() 
+            
     def density_plot(self, variables, country, output, folder="graphs", figsize= (16,9),
                      show=False, save=True, time_subset=[None, None], 
                      typ_day=dict(), typ_week=dict(), label_lang="desc_en"):
+        """Density plot of continuous variables
+    
+        Produces a density plot for one or more continuous variables.
+
+        Args:
+            variables (list): List of string variables names to visualize.
+            country (string): Country ISO2 code to select country to visualise.
+            output (string): Intended output format. "png" for seaborn graph, "html" 
+            for interactive plotly.
+            folder (str, optional): Folder where to save the graph results. Defaults
+            to "graphs".
+            figsize (tuple, optional): Proportions of figure size. Result is different
+            for png and html. Defaults to (16,9).
+            show (bool, optional): Indicator if figure should be shown. Defaults to False.
+            save (bool, optional): Indicator if figure should be saved. Defaults to True.
+            time_subset (list, optional): Time interval to subset. Defaults to [None, None]
+            for full data.
+            typ_day (dict, optional): Indicates selection for the calculation of a
+            typical day. Defaults to dict(), implying no selection.
+            typ_week (dict, optional):  Indicates selection for the calculation of a
+            typical week. Defaults to dict(), implying no selection.
+            label_lang (str, optional): Language of plot labels. Defaults to "desc_en",
+            implying english.
+        """
         
         ## Transform input "variables" into list if not one
         if not(isinstance(variables, list)):
@@ -2536,6 +2890,30 @@ class Eoles_multicountry:
     def cdf_plot(self, variables, country, output, folder="graphs", figsize= (16,9),
                  show=False, save=True, time_subset=[None, None], 
                  typ_day=dict(), typ_week=dict(), label_lang="desc_en"):
+        """Cumulative distribution plot of continuous variables
+    
+        Produces a cumulative distribution plot for one or more continuous variables.
+
+        Args:
+            variables (list): List of string variables names to visualize.
+            country (string): Country ISO2 code to select country to visualise.
+            output (string): Intended output format. "png" for seaborn graph, "html" 
+            for interactive plotly.
+            folder (str, optional): Folder where to save the graph results. Defaults
+            to "graphs".
+            figsize (tuple, optional): Proportions of figure size. Result is different
+            for png and html. Defaults to (16,9).
+            show (bool, optional): Indicator if figure should be shown. Defaults to False.
+            save (bool, optional): Indicator if figure should be saved. Defaults to True.
+            time_subset (list, optional): Time interval to subset. Defaults to [None, None]
+            for full data.
+            typ_day (dict, optional): Indicates selection for the calculation of a
+            typical day. Defaults to dict(), implying no selection.
+            typ_week (dict, optional):  Indicates selection for the calculation of a
+            typical week. Defaults to dict(), implying no selection.
+            label_lang (str, optional): Language of plot labels. Defaults to "desc_en",
+            implying english.
+        """
         
         ## Transform input "variables" into list if not one
         if not(isinstance(variables, list)):
@@ -2592,6 +2970,30 @@ class Eoles_multicountry:
     def price_duration_curve(self, prices, country, output, folder="graphs", figsize= (16,9),
                              show=False, save=True, time_subset=[None, None], 
                              typ_day=dict(), typ_week=dict(), label_lang="desc_en"):
+        """Price duration curve plot of price variables
+    
+        Produces a price duration curve for one or more price variables.
+
+        Args:
+            prices (list): List of string variables names to visualize.
+            country (string): Country ISO2 code to select country to visualise.
+            output (string): Intended output format. "png" for seaborn graph, "html" 
+            for interactive plotly.
+            folder (str, optional): Folder where to save the graph results. Defaults
+            to "graphs".
+            figsize (tuple, optional): Proportions of figure size. Result is different
+            for png and html. Defaults to (16,9).
+            show (bool, optional): Indicator if figure should be shown. Defaults to False.
+            save (bool, optional): Indicator if figure should be saved. Defaults to True.
+            time_subset (list, optional): Time interval to subset. Defaults to [None, None]
+            for full data.
+            typ_day (dict, optional): Indicates selection for the calculation of a
+            typical day. Defaults to dict(), implying no selection.
+            typ_week (dict, optional):  Indicates selection for the calculation of a
+            typical week. Defaults to dict(), implying no selection.
+            label_lang (str, optional): Language of plot labels. Defaults to "desc_en",
+            implying english.
+        """
         
         ## Transform input "variables" into list if not one
         if not(isinstance(prices, list)):
@@ -2648,6 +3050,30 @@ class Eoles_multicountry:
     def energy_line(self, variables, country, output, folder="graphs", figsize= (16,9),
                     show=False, save=True, time_subset=[None, None], typ_day=dict(),
                     typ_week=dict(), label_lang="desc_en"):
+        """Line plot of continuous variables
+    
+        Produces a line plot for one or more continuous variables over a time dimension.
+
+        Args:
+            variables (list): List of string variables names to visualize.
+            country (string): Country ISO2 code to select country to visualise.
+            output (string): Intended output format. "png" for seaborn graph, "html" 
+            for interactive plotly.
+            folder (str, optional): Folder where to save the graph results. Defaults
+            to "graphs".
+            figsize (tuple, optional): Proportions of figure size. Result is different
+            for png and html. Defaults to (16,9).
+            show (bool, optional): Indicator if figure should be shown. Defaults to False.
+            save (bool, optional): Indicator if figure should be saved. Defaults to True.
+            time_subset (list, optional): Time interval to subset. Defaults to [None, None]
+            for full data.
+            typ_day (dict, optional): Indicates selection for the calculation of a
+            typical day. Defaults to dict(), implying no selection.
+            typ_week (dict, optional):  Indicates selection for the calculation of a
+            typical week. Defaults to dict(), implying no selection.
+            label_lang (str, optional): Language of plot labels. Defaults to "desc_en",
+            implying english.
+        """
         
         ## Transform input "variables" into list if not one
         if not(isinstance(variables, list)):
@@ -2706,6 +3132,34 @@ class Eoles_multicountry:
                           folder="graphs", figsize= (16,9), show=False, save=True,
                           time_subset=[None, None], typ_day=dict(), typ_week=dict(),
                           label_lang="desc_en"):
+        """Stacked area chart of continuous variables
+    
+        Produces a stacked area chart for one or more continuous variables.
+
+        Args:
+            variables (list): List of string variables names to visualize.
+            country (string): Country ISO2 code to select country to visualise.
+            output (string): Intended output format. "png" for seaborn graph, "html" 
+            for interactive plotly.
+            negative (list, optional): List of string variable names to display on a 
+            negative axis. Defaults to [].
+            add_line (string, optional): String variable name of variable to be added
+            as a line plot. Defaults to None.       
+            folder (str, optional): Folder where to save the graph results. Defaults
+            to "graphs".
+            figsize (tuple, optional): Proportions of figure size. Result is different
+            for png and html. Defaults to (16,9).
+            show (bool, optional): Indicator if figure should be shown. Defaults to False.
+            save (bool, optional): Indicator if figure should be saved. Defaults to True.
+            time_subset (list, optional): Time interval to subset. Defaults to [None, None]
+            for full data.
+            typ_day (dict, optional): Indicates selection for the calculation of a
+            typical day. Defaults to dict(), implying no selection.
+            typ_week (dict, optional):  Indicates selection for the calculation of a
+            typical week. Defaults to dict(), implying no selection.
+            label_lang (str, optional): Language of plot labels. Defaults to "desc_en",
+            implying english.
+        """
         
         ## Transform input "variables" into list if not one
         if not(isinstance(variables, list)):
@@ -2764,6 +3218,30 @@ class Eoles_multicountry:
     def energy_piechart(self, variables, country, output, folder="graphs", figsize= (16,9),
                         show=False, save=True, time_subset=[None, None], typ_day=dict(),
                         typ_week=dict(), label_lang="desc_en"):
+        """Pie chart over several variables
+    
+        Produces a pie chart of several variables in proportion to the table total.
+
+        Args:
+            variables (list): List of string variables names to visualize.
+            country (string): Country ISO2 code to select country to visualise.
+            output (string): Intended output format. "png" for seaborn graph, "html" 
+            for interactive plotly.
+            folder (str, optional): Folder where to save the graph results. Defaults
+            to "graphs".
+            figsize (tuple, optional): Proportions of figure size. Result is different
+            for png and html. Defaults to (16,9).
+            show (bool, optional): Indicator if figure should be shown. Defaults to False.
+            save (bool, optional): Indicator if figure should be saved. Defaults to True.
+            time_subset (list, optional): Time interval to subset. Defaults to [None, None]
+            for full data.
+            typ_day (dict, optional): Indicates selection for the calculation of a
+            typical day. Defaults to dict(), implying no selection.
+            typ_week (dict, optional):  Indicates selection for the calculation of a
+            typical week. Defaults to dict(), implying no selection.
+            label_lang (str, optional): Language of plot labels. Defaults to "desc_en",
+            implying english.
+        """
         
         ## Transform input "variables" into list if not one
         if not(isinstance(variables, list)):
@@ -2812,6 +3290,28 @@ class Eoles_multicountry:
     def reg_energydata(self, dep, indep, country, squared=[], logged=[], constant=True,
                        include_aov=True, time_subset=[None, None],
                        typ_day=dict(), typ_week=dict()):
+        """Multivariate regression
+
+        Produce a multivariate regression output with options for functional form transformations and
+        AOV display.
+
+        Args:
+            dep (string): Variable name of dependent variable.
+            indep (list): List of variable names of independent variables.
+            country (string): Country ISO2 code to select country to visualise.
+            squared (list, optional): List of variable names to  square transform. Defaults to [].
+            logged (list, optional): List of variable names to log transform. Defaults to [].
+            constant (bool, optional): Indicator on whether to include a constant in regression output.
+            Defaults to True.
+            include_aov (bool, optional): Indicator on whether to include an analysis of variance section 
+            in regression output. Defaults to True.
+            time_subset (list, optional): Time interval to subset. Defaults to [None, None]
+            for full data.
+            typ_day (dict, optional): Indicates selection for the calculation of a
+            typical day. Defaults to dict(), implying no selection.
+            typ_week (dict, optional):  Indicates selection for the calculation of a
+            typical week. Defaults to dict(), implying no selection.
+        """
         
         ## Transform input "variables" into list if not one
         if not(isinstance(indep, list)):
@@ -2835,6 +3335,30 @@ class Eoles_multicountry:
     def energy_balancechart(self, display, country, output, folder="graphs", figsize= (16,9),
                             show=False, save=True, time_subset=[None, None], typ_day=dict(),
                             typ_week=dict(), label_lang="desc_en"):
+        """Generation-Consumption energy balance plot
+    
+        Produces a stacked barplot from generation and consumption categories.
+
+        Args:
+            display (string): Indicator if relative or abolute number should be used.
+            country (string): Country ISO2 code to select country to visualise.
+            output (string): Intended output format. "png" for seaborn graph, "html" 
+            for interactive plotly.
+            folder (str, optional): Folder where to save the graph results. Defaults
+            to "graphs".
+            figsize (tuple, optional): Proportions of figure size. Result is different
+            for png and html. Defaults to (16,9).
+            show (bool, optional): Indicator if figure should be shown. Defaults to False.
+            save (bool, optional): Indicator if figure should be saved. Defaults to True.
+            time_subset (list, optional): Time interval to subset. Defaults to [None, None]
+            for full data.
+            typ_day (dict, optional): Indicates selection for the calculation of a
+            typical day. Defaults to dict(), implying no selection.
+            typ_week (dict, optional):  Indicates selection for the calculation of a
+            typical week. Defaults to dict(), implying no selection.
+            label_lang (str, optional): Language of plot labels. Defaults to "desc_en",
+            implying english.
+        """
         
         ## Flatten column index over multiindex
         variables = _index_flatselect(["generation","consumption"], self.data)
